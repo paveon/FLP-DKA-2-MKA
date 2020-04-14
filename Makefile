@@ -1,5 +1,4 @@
 GHC := ghc
-GHCFLAGS :=
 
 SRC = $(wildcard src/*.hs)
 

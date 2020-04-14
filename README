@@ -1,10 +1,13 @@
-FLP project no. 1
-Author: Ondřej Pavela
-Task: DKA-2-MKA, conversion of deterministic finite automaton to minimal DFA
-Year: 2020
+# [BUT FIT 2020] DKA-2-MKA
+FLP (Functional and Logic Programming) course project no.1:
+Minimization of deterministic finite automaton
 
-Usage
-==========================================
+## Dependencies
+```
+GHC 8.6.5
+```
+
+## Usage
 Simply compile with make (gmake) and run the program as follows:
 dka-2-mka (-i | -t) [inputFile]
     -i            output internal representation of parsed DFA
@@ -12,8 +15,7 @@ dka-2-mka (-i | -t) [inputFile]
     [inputFile]   input file containing valid DFA. DFA is read
                   from standard input if omitted
 
-Implementation
-==========================================
+## Implementation
 Program expects valid DFA on input, possibly with unreachable states.
 Detailed syntax for input DFA was specified by the assignment paper.
 Additionally, this implementation ignores empty leading and trailing 
@@ -24,10 +26,10 @@ any additional non-whitespace characters or trailing commas.
 The algorithms for eliminiation of unreachable states and minimization
 itself were taken from TIN (Theoretical Computer Science) course materials.
 The whole transformation process consists of several steps:
-    1) Input is parsed into internal DFA data structure
-    2) Unreachable states are eliminated from DFA
-    3) Sink state is added to the DFA in order to get a complete DFA
-    4) Complete DFA is minimized by the aforementioned algorithm
+1. Input is parsed into internal DFA data structure
+2. Unreachable states are eliminated from DFA
+3. Sink state is added to the DFA in order to get a complete DFA
+4. Complete DFA is minimized by the aforementioned algorithm
 
 The entire program is split into 4 files (modules):
     FiniteAutomaton.hs: contains various type declarations,
@@ -36,8 +38,6 @@ The entire program is split into 4 files (modules):
     Utils.hs: contains various auxiliary functions used during parsing/transformations.
     Main.hs: implements main entry point function, handles argument parsing and file reads
 
-Tests
-==========================================
-No automatic tests were implemented, however the package includes
-several test inputs with respective outputs produced when manually tested
-The test cases can be found in "./tests/" folder
+## Authors:
+
+* **Ondřej Pavela**

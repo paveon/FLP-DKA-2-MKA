@@ -10,6 +10,7 @@ import Control.Monad
 import Data.Maybe
 import Data.Char
 import Text.Read
+import Text.Printf
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
@@ -21,12 +22,13 @@ import Utils
 -- Expects list of integers separated by commas without any excess comma at the end
 parseStates :: String -> IO StateSet
 parseStates inputLine = do
-    let states = map readMaybe $ splitString ',' inputLine
-    when (Nothing `elem` states) $ exit (ParserError InvalidFormat) False 
-    let stateSet = Set.fromList (catMaybes states)
-    if Set.null stateSet 
-        then exit (ParserError EmptyStateSet) False 
-        else return stateSet
+    let cleanedLine = filter (not . isSpace) inputLine
+    if null cleanedLine then return Set.empty
+    else do
+        -- Try to parse everything to int and then create a set
+        let states = map readMaybe $ splitString ',' inputLine
+        when (Nothing `elem` states) $ exit (ParserError InvalidFormat) False
+        return (Set.fromList $ catMaybes states)
 
 -- Parses a single line of input into an alphabet which is 
 -- represented as a set of characters. Expects string containing only
@@ -34,7 +36,7 @@ parseStates inputLine = do
 parseAlphabet :: String -> IO Alphabet
 parseAlphabet inputLine = do
     let filteredAlphabet = Set.fromList $ filter (not . isSpace) inputLine
-    if all isAsciiLower filteredAlphabet
+    if all isAsciiLower (Set.elems filteredAlphabet)
         then return filteredAlphabet
         else exit (ParserError InvalidFormat) False
 
@@ -44,7 +46,7 @@ parseInitialState :: String -> StateSet -> IO StateID
 parseInitialState inputLine existingStates = do
     states <- parseStates inputLine
     when (Set.size states /= 1) $ exit (ParserError InvalidFormat) False
-    let initialState = Set.elemAt 0 states
+    let initialState = head $ Set.elems states
     if Set.member initialState existingStates
         then return initialState
         else exit (ParserError InvalidInitialState) False
@@ -64,7 +66,7 @@ parseTransitionSymbol :: String -> Alphabet -> IO Char
 parseTransitionSymbol symbolStr alphabet = do
     when (length symbolStr /= 1) $ exit (ParserError InvalidFormat) False
     let symbol = head symbolStr
-    when (symbol `notElem` alphabet) $ 
+    when (symbol `Set.notMember` alphabet) $ 
         exit (ParserError InvalidTransChar) False
 
     return symbol
@@ -76,7 +78,7 @@ parseTransitionState stateSrc existingStates = do
     case srcState of
         Nothing -> exit (ParserError InvalidFormat) False
         Just state -> do
-            when (state `notElem` existingStates) $ 
+            when (state `Set.notMember` existingStates) $ 
                 exit (ParserError InvalidTransState) False
 
             return state
@@ -125,12 +127,14 @@ parseInputFA input = do
     let (s : a : i : f : t) = input
 
     states <- parseStates s
-    when (null states) $ exit (ParserError InvalidFormat) False
+    when (Set.null states) $ exit (ParserError InvalidFormat) False
 
     alphabet <- parseAlphabet a
     initialState <- parseInitialState i states
     finalStates <- parseFinalStates f states
-    transitions <- parseTransitions t states alphabet
+
+    let transitionLines = filter (not . all isSpace) t
+    transitions <- parseTransitions transitionLines states alphabet
 
     return FiniteAutomaton {
         states = states,

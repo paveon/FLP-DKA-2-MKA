@@ -42,20 +42,18 @@ main = do
     when (isNothing outputMode) $ exit (ArgError InvalidArgument) True
 
     contents <- reader
-    let fileLines = filter (not . all isSpace) (lines contents)
+    let fileLines = lines contents
     dfa <- parseInputFA fileLines
 
     case fromMaybe ParsedDFA outputMode of
         ParsedDFA -> 
-            --print dfa
             FA.outputDFA dfa
             
         MinimizedDFA -> do
-            --printf "Parsed: %s\n" (show dfa)
             let cleanDFA = FA.eliminateUnreachableStates dfa
-            --printf "Cleaned: %s\n" (show cleanDFA)
+            -- printf "Cleaned: %s\n" (show cleanDFA)
             let completeDFA = FA.addSinkState cleanDFA
-            --printf "Complete: %s\n" (show completeDFA)
+            -- printf "Complete: %s\n" (show completeDFA)
             let minimalDFA = FA.minimizeDFA completeDFA
             --printf "Minimal: %s\n" (show minimalDFA)
             FA.outputDFA minimalDFA

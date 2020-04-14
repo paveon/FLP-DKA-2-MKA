@@ -130,20 +130,47 @@ eliminateUnreachableStates fa = do
     -- Eliminate all transitions from the unreachable states
     let filteredTransitions = Map.filterWithKey predicate transitionMap where 
             predicate :: StateID -> StateTransitions -> Bool
-            predicate state _ = state `notElem` unreachable
+            predicate state _ = state `Set.notMember` unreachable
     
-    fa { states = reachable, transitions = filteredTransitions }
+    fa { 
+        states = reachable, 
+        transitions = filteredTransitions,
+        finalStates = Set.intersection reachable (finalStates fa)
+    }
 
 -- Adds sink state to the input DFA. Does nothing if the input DFA is complete
 addSinkState :: FiniteAutomaton -> FiniteAutomaton
 addSinkState dfa = do
     let sinkID = Set.findMax (states dfa) + 1
     let complementMap = Map.fromList $ zip (Set.toList $ alphabet dfa) (repeat sinkID)
-    dfa { transitions = Map.map (`Map.union` complementMap) (transitions dfa) }
+    let transitionMap = transitions dfa
+    let statesWithTransitions = Map.keysSet transitionMap
+    let statesWithoutTransitions = Set.difference (states dfa) statesWithTransitions
+    if Set.null statesWithoutTransitions 
+    then do
+        let isComplete stateTransitions = Map.keysSet stateTransitions == alphabet dfa
+        let statesTransitions = Map.elems transitionMap
+        if all isComplete statesTransitions then dfa
+        else dfa { 
+                states = Set.insert sinkID (states dfa),
+                transitions = Map.insert sinkID complementMap $
+                    Map.map (`Map.union` complementMap) transitionMap
+            }
+    else do
+        -- Add sink transitions to states with no transitions
+        let updatedMap = Set.foldl lambda transitionMap statesWithoutTransitions where
+                lambda :: TransitionMap -> StateID -> TransitionMap
+                lambda mapAcc state = Map.insert state complementMap mapAcc
+                
+        dfa { 
+            states = Set.insert sinkID (states dfa),
+            transitions = Map.insert sinkID complementMap $
+                Map.map (`Map.union` complementMap) updatedMap
+        }
 
 -- Determines if both input states belong to the same equivalence class
 stateEquivalence :: StateID -> StateID -> FiniteAutomaton -> EqClassMap -> Bool
-stateEquivalence s1 s2 fa eqClassMap = all equalDstClass (alphabet fa) where
+stateEquivalence s1 s2 fa eqClassMap = all equalDstClass (Set.elems $ alphabet fa) where
     -- Retrieve state transition maps for both states
     s1Map = Map.findWithDefault Map.empty s1 (transitions fa)
     s2Map = Map.findWithDefault Map.empty s2 (transitions fa)
@@ -161,7 +188,7 @@ classifyState :: EqClassMap -> FiniteAutomaton -> [StateSet] -> StateID -> [Stat
 classifyState eqClassMap fa classes state = do
     let defaultValue = Set.singleton state
     let updateFunction = Set.insert state
-    findAndMap (\set -> stateEquivalence state (Set.elemAt 0 set) fa eqClassMap)
+    findAndMap (\set -> stateEquivalence state (head $ Set.elems set) fa eqClassMap)
         updateFunction defaultValue classes
 
 -- Attempts to partition single equivalence class into multiple smaller classes
@@ -174,7 +201,7 @@ partitionEqClass eqClassMap fa set =
 minimizeDFA :: FiniteAutomaton -> FiniteAutomaton
 minimizeDFA dfa = do
     let transitionMap = transitions dfa
-    let initialEqClasses = pairToSet $ Set.partition (`elem` finalStates dfa) (states dfa)
+    let initialEqClasses = pairToSet $ Set.partition (`Set.member` finalStates dfa) (states dfa)
 
     -- Recursively partitions all equivalence classes until we obtain a fixpoint
     let partitionClasses :: Set.Set StateSet -> (Set.Set StateSet, EqClassMap)
@@ -189,7 +216,22 @@ minimizeDFA dfa = do
                 else partitionClasses refined
 
     let (eqClasses, eqClassMap) = partitionClasses initialEqClasses
-    let nameMap = Map.fromList $ zip (Set.toList eqClasses) [0..]
+    let stateToClass stateID = fromMaybe Set.empty $ Map.lookup stateID eqClassMap
+
+    -- Construct name map which maps each equivalence class to a new state ID
+    -- so that we conform to the output rules
+    let createNameMap :: [StateID] -> StateID -> Map.Map StateSet StateID -> Map.Map StateSet StateID
+        createNameMap [] _ nameMap = nameMap
+        createNameMap (state:tail) maxID nameMap = do
+            let stateClass = stateToClass state
+            if Map.member stateClass nameMap then createNameMap tail maxID nameMap
+            else do
+                let nameMapUpdated = Map.insert stateClass maxID nameMap
+                let stateTransitions = fromMaybe Map.empty $ Map.lookup state transitionMap
+                let dstStates = Map.elems stateTransitions
+                createNameMap (tail ++ dstStates) (maxID + 1) nameMapUpdated
+
+    let nameMap = createNameMap [initialState dfa] 0 Map.empty
 
     let stateIdToClassId :: StateID -> StateID
         stateIdToClassId stateID = do
