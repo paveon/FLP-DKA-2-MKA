@@ -9,11 +9,13 @@ GHC 8.6.5
 
 ## Usage
 Simply compile with make (gmake) and run the program as follows:
+```
 dka-2-mka (-i | -t) [inputFile]
     -i            output internal representation of parsed DFA
     -t            output minimized input DFA
     [inputFile]   input file containing valid DFA. DFA is read
                   from standard input if omitted
+```
 
 ## Implementation
 Program expects valid DFA on input, possibly with unreachable states.
@@ -32,12 +34,11 @@ The whole transformation process consists of several steps:
 4. Complete DFA is minimized by the aforementioned algorithm
 
 The entire program is split into 4 files (modules):
-    FiniteAutomaton.hs: contains various type declarations,
+* FiniteAutomaton.hs: contains various type declarations,
         DFA data structure declaration and all relevant transformation functions
-    Parser.hs: implements simple DFA parser
-    Utils.hs: contains various auxiliary functions used during parsing/transformations.
-    Main.hs: implements main entry point function, handles argument parsing and file reads
+* Parser.hs: implements simple DFA parser
+* Utils.hs: contains various auxiliary functions used during parsing/transformations.
+* Main.hs: implements main entry point function, handles argument parsing and file reads
 
 ## Authors:
-
 * **Ondřej Pavela**
