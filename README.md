@@ -1,4 +1,4 @@
-# [BUT FIT 2020] DKA-2-MKA
+# [VUT FIT 2020] DKA-2-MKA
 FLP (Functional and Logic Programming) course project no.1:
 Minimization of deterministic finite automaton
 
